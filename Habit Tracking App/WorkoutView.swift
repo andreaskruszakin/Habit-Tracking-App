@@ -258,8 +258,8 @@ struct WorkoutView: View {
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(.white)
-                        .foregroundColor(.black)
+                        .background(Color(uiColor: .label))
+                        .foregroundColor(Color(uiColor: .systemBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                 }
             }

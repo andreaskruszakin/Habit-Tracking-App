@@ -73,7 +73,7 @@ struct HomeView: View {
                             .font(.system(size: 32))
                         Text("workout")
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color(uiColor: .label))
                 }
                 
                 // Second line
@@ -98,7 +98,7 @@ struct HomeView: View {
                                 Text("rest days")
                             }
                         }
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color(uiColor: .label))
                     }
                 }
                 
@@ -116,7 +116,7 @@ struct HomeView: View {
                                 .font(.system(size: 32))
                             Text("\(fallbackDays - usedFallbacks) fallback")
                         }
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color(uiColor: .label))
                     }
                     Text("left.")
                         .foregroundStyle(.secondary)
@@ -194,18 +194,31 @@ struct HomeView: View {
             Spacer()
             
             // Start Workout Button
-            Button(action: {
-                handleWorkoutStart()
-            }) {
-                Text(workoutCompletedToday ? "Workout Completed" : "Start Workout")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(workoutCompletedToday ? .gray : .white)
-                    .foregroundColor(workoutCompletedToday ? .white : .black)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+            VStack(spacing: 8) {
+                Button(action: {
+                    handleWorkoutStart()
+                }) {
+                    Text(buttonText)
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(buttonBackground)
+                        .foregroundColor(Color(uiColor: .systemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+                .disabled(workoutCompletedToday || isRestDay)
+                
+                if workoutCompletedToday {
+                    Button(action: {
+                        showingDurationPicker = true
+                    }) {
+                        Text("Do Workout Again")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(Color(uiColor: .label))
+                    }
+                }
             }
-            .disabled(workoutCompletedToday)
         }
         .padding(32)
         .background(Color(uiColor: .systemBackground))
@@ -258,30 +271,29 @@ struct HomeView: View {
             return false
         }
         
-        // Get the week of the month for the date
-        let weekOfMonth = calendar.component(.weekOfMonth, from: date)
+        // Get the weekday for the date (1 = Sunday, 2 = Monday, etc.)
         let weekday = calendar.component(.weekday, from: date)
         
-        // Calculate rest days distribution based on total rest days
+        // Rest days are Tuesday (3), Thursday (5), and Saturday (7)
         switch restDays {
         case 1:
-            // One rest day per week on Wednesday
-            return weekday == 4
+            // One rest day per week on Thursday
+            return weekday == 5
         case 2:
-            // Two rest days per week on Tuesday and Friday
-            return weekday == 3 || weekday == 6
+            // Two rest days per week on Tuesday and Saturday
+            return weekday == 3 || weekday == 7
         case 3:
-            // Three rest days per week on Monday, Wednesday, and Friday
-            return weekday == 2 || weekday == 4 || weekday == 6
+            // Three rest days per week on Tuesday, Thursday, and Saturday
+            return weekday == 3 || weekday == 5 || weekday == 7
         case 4:
-            // Four rest days per week on Monday, Tuesday, Thursday, and Saturday
-            return weekday == 2 || weekday == 3 || weekday == 5 || weekday == 7
+            // Four rest days per week on Monday, Wednesday, Friday, and Sunday
+            return weekday == 2 || weekday == 4 || weekday == 6 || weekday == 1
         case 5:
-            // Five rest days per week, excluding Wednesday and Sunday
-            return weekday != 4 && weekday != 1
+            // Five rest days per week, only workout Tuesday and Thursday
+            return weekday != 3 && weekday != 5
         case 6:
-            // Six rest days per week, only workout on Sunday
-            return weekday != 1
+            // Six rest days per week, only workout Monday
+            return weekday != 2
         case 7:
             // Rest every day
             return true
@@ -300,6 +312,28 @@ struct HomeView: View {
         if let lastWorkoutDateData = UserDefaults.standard.object(forKey: "LastWorkoutDate") as? Date {
             lastWorkoutDate = lastWorkoutDateData
             workoutCompletedToday = calendar.isDate(lastWorkoutDateData, inSameDayAs: Date())
+        }
+    }
+    
+    private var isRestDay: Bool {
+        isRestDayForDate(Date())
+    }
+    
+    private var buttonText: String {
+        if workoutCompletedToday {
+            return "Workout Completed"
+        } else if isRestDay {
+            return "It's rest day, have some rest!"
+        } else {
+            return "Start Workout"
+        }
+    }
+    
+    private var buttonBackground: Color {
+        if workoutCompletedToday || isRestDay {
+            return Color(uiColor: .systemGray)
+        } else {
+            return Color(uiColor: .label)
         }
     }
 }
@@ -386,8 +420,8 @@ struct RestDaysPicker: View {
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(.white)
-                    .foregroundColor(.black)
+                    .background(Color(uiColor: .label))
+                    .foregroundColor(Color(uiColor: .systemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 16))
             }
             .padding(.bottom, 4)
