@@ -9,8 +9,9 @@ struct HomeView: View {
     @State private var showingRestDaysPicker = false
     @State private var showingWorkout = false
     @State private var selectedDate = Date()
-    @State private var lastWorkoutDate: Date? = Date()  // Track last workout
+    @State private var lastWorkoutDate: Date? = nil
     @State private var showingFallbackHelp = false
+    @State private var workoutCompletedToday = false
     
     private var calendar: Calendar {
         var calendar = Calendar.current
@@ -66,25 +67,25 @@ struct HomeView: View {
                 // First line
                 HStack(spacing: 8) {
                     Text("Today, a")
-                        .foregroundStyle(.gray.opacity(0.7))
+                        .foregroundStyle(.secondary)
                     HStack(spacing: 8) {
                         Image(systemName: "figure.strengthtraining.traditional")
                             .font(.system(size: 32))
                         Text("workout")
                     }
-                    .foregroundStyle(.black)
+                    .foregroundStyle(.white)
                 }
                 
                 // Second line
                 HStack(spacing: 8) {
                     Text("is scheduled. You still")
-                        .foregroundStyle(.gray.opacity(0.7))
+                        .foregroundStyle(.secondary)
                 }
                 
                 // Third line
                 HStack(spacing: 8) {
                     Text("have")
-                        .foregroundStyle(.gray.opacity(0.7))
+                        .foregroundStyle(.secondary)
                     Button {
                         showingRestDaysPicker = true
                     } label: {
@@ -97,14 +98,14 @@ struct HomeView: View {
                                 Text("rest days")
                             }
                         }
-                        .foregroundStyle(.black)
+                        .foregroundStyle(.white)
                     }
                 }
                 
                 // Fourth line
                 HStack(spacing: 8) {
                     Text("and")
-                        .foregroundStyle(.gray.opacity(0.7))
+                        .foregroundStyle(.secondary)
                     Button {
                         withAnimation {
                             showingFallbackHelp = true
@@ -115,10 +116,10 @@ struct HomeView: View {
                                 .font(.system(size: 32))
                             Text("\(fallbackDays - usedFallbacks) fallback")
                         }
-                        .foregroundStyle(.black)
+                        .foregroundStyle(.white)
                     }
                     Text("left.")
-                        .foregroundStyle(.gray.opacity(0.7))
+                        .foregroundStyle(.secondary)
                 }
             }
             .font(.system(size: 32, design: .rounded))
@@ -129,12 +130,12 @@ struct HomeView: View {
                 VStack {
                     Spacer(minLength: 32)
                     RoundedRectangle(cornerRadius: 24)
-                        .fill(Color(uiColor: .systemGray6))
+                        .fill(Color(uiColor: .secondarySystemBackground))
                         .overlay(
-                            (Text("Fallbacks").fontWeight(.bold).foregroundColor(.black) +
+                            (Text("Fallbacks").fontWeight(.bold).foregroundColor(.primary) +
                             Text(" are your safety net to protect your streak if you miss a workout or stretching session. Start with 2 fallbacks, if used, your streak stays alive. Run out, and your streak resets to 0.")
                                 .fontWeight(.medium)
-                                .foregroundStyle(.gray))
+                                .foregroundStyle(.secondary))
                                 .font(.system(size: 20, design: .rounded))
                                 .padding(24)
                                 .multilineTextAlignment(.center)
@@ -145,7 +146,7 @@ struct HomeView: View {
                 }
                 .presentationDetents([.height(280)])
                 .presentationCornerRadius(32)
-                .presentationBackground(Color(uiColor: .systemBackground))
+                .background(Color(uiColor: .systemBackground))
             }
             
             Divider()
@@ -168,6 +169,7 @@ struct HomeView: View {
                             let isToday = calendar.isDate(date, inSameDayAs: Date())
                             let isCurrentMonth = calendar.isDate(date, equalTo: selectedDate, toGranularity: .month)
                             let isRestDay = isRestDayForDate(date)
+                            let isWorkoutCompleted = isWorkoutCompletedForDate(date)
                             
                             ZStack {
                                 RoundedRectangle(cornerRadius: 6)
@@ -176,6 +178,10 @@ struct HomeView: View {
                                 
                                 if isRestDay && isCurrentMonth {
                                     Image(systemName: "pause.circle.fill")
+                                        .font(.system(size: 16))
+                                        .foregroundStyle(.white)
+                                } else if isWorkoutCompleted && isCurrentMonth {
+                                    Image(systemName: "checkmark.circle.fill")
                                         .font(.system(size: 16))
                                         .foregroundStyle(.white)
                                 }
@@ -191,18 +197,21 @@ struct HomeView: View {
             Button(action: {
                 handleWorkoutStart()
             }) {
-                Text("Start Workout")
+                Text(workoutCompletedToday ? "Workout Completed" : "Start Workout")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(.black)
-                    .foregroundColor(.white)
+                    .background(workoutCompletedToday ? .gray : .white)
+                    .foregroundColor(workoutCompletedToday ? .white : .black)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
             }
+            .disabled(workoutCompletedToday)
         }
         .padding(32)
+        .background(Color(uiColor: .systemBackground))
         .onAppear {
             checkMissedWorkout()
+            checkTodayWorkout()
         }
         .sheet(isPresented: $showingDurationPicker) {
             WorkoutDurationPicker(showingWorkout: $showingWorkout)
@@ -217,13 +226,7 @@ struct HomeView: View {
     }
     
     private func handleWorkoutStart() {
-        let today = Date()
-        if isRestDayForDate(today) {
-            // On rest days, just start the workout without affecting fallbacks
-            showingDurationPicker = true
-        } else {
-            // On workout days, update last workout date and start
-            lastWorkoutDate = today
+        if !workoutCompletedToday {
             showingDurationPicker = true
         }
     }
@@ -287,6 +290,18 @@ struct HomeView: View {
             return false
         }
     }
+    
+    private func isWorkoutCompletedForDate(_ date: Date) -> Bool {
+        guard let lastWorkout = lastWorkoutDate else { return false }
+        return calendar.isDate(date, inSameDayAs: lastWorkout)
+    }
+    
+    private func checkTodayWorkout() {
+        if let lastWorkoutDateData = UserDefaults.standard.object(forKey: "LastWorkoutDate") as? Date {
+            lastWorkoutDate = lastWorkoutDateData
+            workoutCompletedToday = calendar.isDate(lastWorkoutDateData, inSameDayAs: Date())
+        }
+    }
 }
 
 // Helper extensions
@@ -330,15 +345,16 @@ struct RestDaysPicker: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
                     Text("How many")
-                        .foregroundStyle(.gray.opacity(0.7))
+                        .foregroundStyle(.secondary)
                     Image(systemName: "pause.circle.fill")
                         .font(.system(size: 32))
+                        .foregroundStyle(.primary)
                     Text("rest")
                 }
                 
                 HStack(spacing: 8) {
                     Text("days do you need?")
-                        .foregroundStyle(.gray.opacity(0.7))
+                        .foregroundStyle(.secondary)
                 }
             }
             .font(.system(size: 32, design: .rounded))
@@ -357,7 +373,7 @@ struct RestDaysPicker: View {
             }
             .padding(.vertical, 12)
             .padding(.horizontal, 16)
-            .background(Color.gray.opacity(0.1))
+            .background(Color(uiColor: .secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 24))
             
             Spacer(minLength: 4)
@@ -370,8 +386,8 @@ struct RestDaysPicker: View {
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(.black)
-                    .foregroundColor(.white)
+                    .background(.white)
+                    .foregroundColor(.black)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
             }
             .padding(.bottom, 4)
@@ -379,6 +395,7 @@ struct RestDaysPicker: View {
         .padding(.top, 48)
         .padding(.horizontal, 32)
         .padding(.bottom, 16)
+        .background(Color(uiColor: .systemBackground))
     }
 }
 

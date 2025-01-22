@@ -12,15 +12,16 @@ struct WorkoutDurationPicker: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
                     Text("How much")
-                        .foregroundStyle(.gray.opacity(0.7))
+                        .foregroundStyle(.secondary)
                     Image(systemName: "clock")
                         .font(.system(size: 32))
+                        .foregroundStyle(.primary)
                     Text("time")
                 }
                 
                 HStack(spacing: 8) {
                     Text("do you have today?")
-                        .foregroundStyle(.gray.opacity(0.7))
+                        .foregroundStyle(.secondary)
                 }
             }
             .font(.system(size: 32, design: .rounded))
@@ -39,7 +40,7 @@ struct WorkoutDurationPicker: View {
             }
             .padding(.vertical, 12)
             .padding(.horizontal, 16)
-            .background(Color.gray.opacity(0.1))
+            .background(Color(uiColor: .secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 24))
             
             Spacer(minLength: 4)
@@ -52,8 +53,8 @@ struct WorkoutDurationPicker: View {
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(.black)
-                    .foregroundColor(.white)
+                    .background(.white)
+                    .foregroundColor(.black)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
             }
             .padding(.bottom, 4)
@@ -61,6 +62,7 @@ struct WorkoutDurationPicker: View {
         .padding(.top, 48)
         .padding(.horizontal, 32)
         .padding(.bottom, 16)
+        .background(Color(uiColor: .systemBackground))
         .fullScreenCover(isPresented: $showingWorkout) {
             WorkoutView(showingWorkout: $showingWorkout)
         }

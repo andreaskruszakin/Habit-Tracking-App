@@ -99,6 +99,9 @@ struct WorkoutView: View {
     
     var body: some View {
         ZStack {
+            Color(uiColor: .systemBackground)
+                .ignoresSafeArea()
+            
             VStack(spacing: 24) {
                 // Header
                 HStack {
@@ -132,14 +135,14 @@ struct WorkoutView: View {
                 
                 // Exercise Icon
                 RoundedRectangle(cornerRadius: 24)
-                    .fill(Color(uiColor: .systemGray6))
+                    .fill(Color(uiColor: .secondarySystemBackground))
                     .frame(height: 200)
                     .overlay(
                         Image(systemName: currentExercise.icon)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .frame(width: 100, height: 100)
-                            .foregroundStyle(.black)
+                            .foregroundStyle(.primary)
                     )
                 
                 // Exercise Info
@@ -170,11 +173,11 @@ struct WorkoutView: View {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 2)
-                            .fill(Color(uiColor: .systemGray5))
+                            .fill(Color(uiColor: .secondarySystemBackground))
                             .frame(height: 4)
                         
                         RoundedRectangle(cornerRadius: 2)
-                            .fill(Color.black)
+                            .fill(Color(uiColor: .label))
                             .frame(width: geometry.size.width * currentExercise.progress, height: 4)
                     }
                 }
@@ -185,7 +188,7 @@ struct WorkoutView: View {
                 HStack {
                     Text("Repetitions")
                         .font(.system(size: 20, weight: .medium, design: .rounded))
-                        .foregroundStyle(.gray.opacity(0.7))
+                        .foregroundStyle(.secondary)
                     
                     Spacer()
                     
@@ -226,7 +229,7 @@ struct WorkoutView: View {
                 .padding(.vertical, 16)
                 .padding(.horizontal, 24)
                 .frame(maxWidth: .infinity)
-                .background(Color(uiColor: .systemGray6))
+                .background(Color(uiColor: .secondarySystemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 20))
                 
                 // Next Set Button
@@ -235,6 +238,8 @@ struct WorkoutView: View {
                         withAnimation(.easeInOut(duration: 0.3)) {
                             showingCompletion = true
                         }
+                        // Update last workout date
+                        UserDefaults.standard.set(Date(), forKey: "LastWorkoutDate")
                         // Dismiss after a delay to show completion animation
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                             // Dismiss both views after showing completion
@@ -253,16 +258,16 @@ struct WorkoutView: View {
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(.black)
-                        .foregroundColor(.white)
+                        .background(.white)
+                        .foregroundColor(.black)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                 }
             }
             .padding(30)
             
             if showingCompletion {
-                // White background
-                Color.white
+                // Background
+                Color(uiColor: .systemBackground)
                     .ignoresSafeArea()
                     .transition(.opacity)
                 
@@ -275,7 +280,7 @@ struct WorkoutView: View {
                     
                     Text("Workout Complete!")
                         .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundColor(.black)
+                        .foregroundStyle(.primary)
                         .padding(.top)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
