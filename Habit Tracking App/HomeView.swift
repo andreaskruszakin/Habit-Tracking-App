@@ -7,7 +7,10 @@ struct HomeView: View {
     @State private var usedFallbacks: Int = 0
     @State private var showingDurationPicker = false
     @State private var showingRestDaysPicker = false
+    @State private var showingWorkout = false
     @State private var selectedDate = Date()
+    @State private var lastWorkoutDate: Date? = Date()  // Track last workout
+    @State private var showingFallbackHelp = false
     
     private var calendar: Calendar {
         var calendar = Calendar.current
@@ -88,7 +91,11 @@ struct HomeView: View {
                         HStack(spacing: 8) {
                             Image(systemName: "pause.circle.fill")
                                 .font(.system(size: 32))
-                            Text("\(restDays) rest days")
+                            HStack(spacing: 4) {
+                                Text("\(restDays)")
+                                    .contentTransition(.numericText())
+                                Text("rest days")
+                            }
                         }
                         .foregroundStyle(.black)
                     }
@@ -98,18 +105,48 @@ struct HomeView: View {
                 HStack(spacing: 8) {
                     Text("and")
                         .foregroundStyle(.gray.opacity(0.7))
-                    HStack(spacing: 8) {
-                        Image(systemName: "heart.fill")
-                            .font(.system(size: 32))
-                        Text("\(fallbackDays - usedFallbacks) fallback")
+                    Button {
+                        withAnimation {
+                            showingFallbackHelp = true
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 32))
+                            Text("\(fallbackDays - usedFallbacks) fallback")
+                        }
+                        .foregroundStyle(.black)
                     }
-                    .foregroundStyle(.black)
                     Text("left.")
                         .foregroundStyle(.gray.opacity(0.7))
                 }
             }
             .font(.system(size: 32, design: .rounded))
             .fontWeight(.semibold)
+            
+            // Fallback Help Popup
+            .sheet(isPresented: $showingFallbackHelp) {
+                VStack {
+                    Spacer(minLength: 32)
+                    RoundedRectangle(cornerRadius: 24)
+                        .fill(Color(uiColor: .systemGray6))
+                        .overlay(
+                            (Text("Fallbacks").fontWeight(.bold).foregroundColor(.black) +
+                            Text(" are your safety net to protect your streak if you miss a workout or stretching session. Start with 2 fallbacks, if used, your streak stays alive. Run out, and your streak resets to 0.")
+                                .fontWeight(.medium)
+                                .foregroundStyle(.gray))
+                                .font(.system(size: 20, design: .rounded))
+                                .padding(24)
+                                .multilineTextAlignment(.center)
+                        )
+                        .padding(.horizontal, 32)
+                        .frame(height: 220)
+                    Spacer(minLength: 24)
+                }
+                .presentationDetents([.height(280)])
+                .presentationCornerRadius(32)
+                .presentationBackground(Color(uiColor: .systemBackground))
+            }
             
             Divider()
                 .padding(.vertical, 8)
@@ -152,16 +189,7 @@ struct HomeView: View {
             
             // Start Workout Button
             Button(action: {
-                if isRestDayForDate(Date()) {
-                    if fallbackDays - usedFallbacks > 0 {
-                        usedFallbacks += 1
-                        showingDurationPicker = true
-                    } else {
-                        streakCount = 0
-                    }
-                } else {
-                    showingDurationPicker = true
-                }
+                handleWorkoutStart()
             }) {
                 Text("Start Workout")
                     .font(.headline)
@@ -173,19 +201,51 @@ struct HomeView: View {
             }
         }
         .padding(32)
+        .onAppear {
+            checkMissedWorkout()
+        }
         .sheet(isPresented: $showingDurationPicker) {
-            WorkoutDurationPicker()
+            WorkoutDurationPicker(showingWorkout: $showingWorkout)
                 .presentationDetents([.height(500)])
-                .presentationDragIndicator(.visible)
                 .presentationCornerRadius(32)
-                .presentationBackground(Color(uiColor: .systemBackground))
         }
         .sheet(isPresented: $showingRestDaysPicker) {
             RestDaysPicker(restDays: $restDays)
                 .presentationDetents([.height(500)])
-                .presentationDragIndicator(.visible)
                 .presentationCornerRadius(32)
-                .presentationBackground(Color(uiColor: .systemBackground))
+        }
+    }
+    
+    private func handleWorkoutStart() {
+        let today = Date()
+        if isRestDayForDate(today) {
+            // On rest days, just start the workout without affecting fallbacks
+            showingDurationPicker = true
+        } else {
+            // On workout days, update last workout date and start
+            lastWorkoutDate = today
+            showingDurationPicker = true
+        }
+    }
+    
+    private func checkMissedWorkout() {
+        guard let lastWorkout = lastWorkoutDate else { return }
+        
+        let today = Date()
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        
+        // Check if we missed a workout yesterday
+        if !calendar.isDate(lastWorkout, inSameDayAs: today) &&
+           !calendar.isDate(lastWorkout, inSameDayAs: yesterday) &&
+           !isRestDayForDate(yesterday) {
+            // Missed a workout on a non-rest day
+            if fallbackDays - usedFallbacks > 0 {
+                // Use a fallback
+                usedFallbacks += 1
+            } else {
+                // Reset streak if no fallbacks left
+                streakCount = 0
+            }
         }
     }
     
@@ -256,68 +316,6 @@ extension Array {
         return stride(from: 0, to: count, by: size).map {
             Array(self[$0 ..< Swift.min($0 + size, count)])
         }
-    }
-}
-
-struct WorkoutDurationPicker: View {
-    @State private var selectedMinutes: Int = 30
-    let availableMinutes = [15, 30, 45]
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Title
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text("How much")
-                        .foregroundStyle(.gray.opacity(0.7))
-                    Image(systemName: "clock")
-                        .font(.system(size: 32))
-                    Text("time")
-                }
-                
-                HStack(spacing: 8) {
-                    Text("do you have today?")
-                        .foregroundStyle(.gray.opacity(0.7))
-                }
-            }
-            .font(.system(size: 32, design: .rounded))
-            .fontWeight(.semibold)
-            
-            // Time Picker
-            VStack {
-                Picker("Duration", selection: $selectedMinutes) {
-                    ForEach(availableMinutes, id: \.self) { minutes in
-                        Text("~\(minutes) minutes")
-                            .font(.system(size: 24, design: .rounded))
-                    }
-                }
-                .pickerStyle(.wheel)
-                .frame(height: 150)
-            }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 16)
-            .background(Color.gray.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: 24))
-            
-            Spacer(minLength: 4)
-            
-            // Start Button
-            Button(action: {
-                // Handle workout start with selectedMinutes
-            }) {
-                Text("Start")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(.black)
-                    .foregroundColor(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-            }
-            .padding(.bottom, 4)
-        }
-        .padding(.top, 48)
-        .padding(.horizontal, 32)
-        .padding(.bottom, 16)
     }
 }
 
